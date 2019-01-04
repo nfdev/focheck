@@ -15,9 +15,6 @@ const styles = theme => ({
     width: '100%',
     overflowX: 'auto',
   },
-  table: {
-    minWidth: 500,
-  },
   formControl: {
     margin: theme.spacing.unit,
     minWidth: 120,
@@ -26,10 +23,6 @@ const styles = theme => ({
 });
 
 class LeftConsole extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render () {
     const { classes } = this.props;
 

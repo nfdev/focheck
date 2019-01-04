@@ -9,6 +9,7 @@
     "react": "latest",
     "react-dom": "latest",
     "react-scripts": "latest",
+    "react-table": "latest",
     "recharts": "latest"
   },
   "scripts": {
