@@ -10,7 +10,8 @@
     "react-dom": "latest",
     "react-scripts": "latest",
     "react-table": "latest",
-    "recharts": "latest"
+    "recharts": "latest",
+    "superagent": "latest"
   },
   "scripts": {
     "start": "react-scripts start",

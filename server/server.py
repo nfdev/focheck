@@ -4,13 +4,38 @@ import random
 from tornado.httpserver import HTTPServer
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url
+from tornado.web import StaticFileHandler
 from tornado.websocket import WebSocketHandler
 
 
-class IndexHandler(RequestHandler):
+class SharedMemory():
+    return_status = 200
+
+
+class TestPage(RequestHandler):
 
     def get(self, *args, **kwargs):
-        self.render('main.html')
+        status = SharedMemory.return_status
+        self.clear()
+        self.set_status(status)
+        self.finish("TestPage %d" % status)
+
+
+class PostHandler(RequestHandler):
+
+    def get(self, *args, **kwargs):
+        self.write("Get not allowed")
+
+    def post(self, *args, **kwargs):
+        try:
+            data = json.loads(self.request.body)
+            if data['type'] == 'return_status':
+                SharedMemory.return_status = int(data['status'])
+                self.write("Set Return Status : %s" % data['status'])
+            else:
+                self.write("Syntax Error")
+        except:
+            self.write("Syntax Error")
 
 
 class NetStatHandler(WebSocketHandler):
@@ -62,23 +87,44 @@ class NetStatHandler(WebSocketHandler):
         self.waiters.remove(self)
 
 
-class Server(Application):
+
+class AdminServer(Application):
 
     def __init__(self):
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         Application.__init__(
             self,
             [
-                url(r'/', IndexHandler, name='index'),
                 url(r'/ws', NetStatHandler, name='ws'),
+                url(r'/post', PostHandler, name='posthandler'),
+                url(r'/(.*)', StaticFileHandler, {'path': BASE_DIR,'default_filename':'index.html'}),
             ],
-            template_path=os.path.join(BASE_DIR, 'templates'),
-            static_path=os.path.join(BASE_DIR, 'static'),
+        )
+
+
+class TestServer(Application):
+
+    def __init__(self):
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        path_favicon = os.path.join(BASE_DIR, './favicon.ico')
+        Application.__init__(
+            self,
+            [
+                url(r'/', TestPage, name='testpage'),
+                url(r"/(.*)", StaticFileHandler, {"path": BASE_DIR}),
+            ],
+            #template_path=os.path.join(BASE_DIR, 'templates'),
+            #static_path=os.path.join(BASE_DIR, 'static'),
         )
 
 
 if __name__ == '__main__':
-    sv = Server()
-    http_server = HTTPServer(sv)
-    http_server.listen(8000)
+    asv = AdminServer()
+    admin_http_server = HTTPServer(asv)
+    admin_http_server.listen(3000)
+
+    tsv = TestServer()
+    test_http_server = HTTPServer(tsv)
+    test_http_server.listen(8000)
+
     IOLoop.instance().start()

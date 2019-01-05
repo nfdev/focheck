@@ -9,6 +9,8 @@ import TableCell from '@material-ui/core/TableCell';
 import FormControl from '@material-ui/core/FormControl';
 import NativeSelect from '@material-ui/core/NativeSelect';
 import Input from '@material-ui/core/Input';
+import request from 'superagent';
+
 
 const styles = theme => ({
   root: {
@@ -23,6 +25,26 @@ const styles = theme => ({
 });
 
 class LeftConsole extends React.Component {
+
+  stateChangeHandler (e) {
+    let s = e.target.value;
+    request
+      .post('/post')
+      .send({
+        type: 'return_status',
+        status: s
+      })
+      .end(
+        (err, res) => {
+          if (err){
+            console.log('stateChangeHandler error');
+            console.log(err);
+          }else{
+          }
+        }
+      );
+  }
+
   render () {
     const { classes } = this.props;
 
@@ -38,7 +60,11 @@ class LeftConsole extends React.Component {
               <TableCell>ReturnStatus</TableCell>
               <TableCell>
                 <FormControl className={classes.formControl}>
-                  <NativeSelect defaultValue={200} input={<Input name="status" id="return-status" />}>
+                  <NativeSelect
+                    defaultValue={200}
+                    onChange={(e) => this.stateChangeHandler(e)}
+                    input={<Input name="status" id="return-status" />}
+                  >
                     <option value="" />
                     <option value={404}>404</option>
                     <option value={200}>200</option>
