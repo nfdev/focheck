@@ -3,13 +3,14 @@ from tornado.websocket import websocket_connect, WebSocketClosedError
 import psutil
 import json
 import asyncio
-
+import datetime
 
 class NetStatClient(object):
 
     def __init__(self, url):
         self.url = url
         self.connect()
+        self.connections = {}
 
     async def _fetch_ws(self):
         try:
@@ -26,13 +27,14 @@ class NetStatClient(object):
         while True:
             await asyncio.sleep(1)
 
-            connections = []
+            for k in self.connections.keys():
+                self.connections[k]['status'] = 'REMOVED'
 
             for c in psutil.net_connections():
                 if (
                         c.type.name == 'SOCK_STREAM'
                         and c.raddr
-                        #and (c.laddr.port == 80 or c.laddr.port == 443 or c.laddr.port == 8000)
+                        and (c.laddr.port == 80 or c.laddr.port == 443)
                         #and (c.laddr.ip == '10.0.0.191')
                 ):
                     connection = {
@@ -41,11 +43,20 @@ class NetStatClient(object):
                         'lport': c.laddr.port,
                         'raddr': c.raddr.ip,
                         'rport': c.raddr.port,
-                        'status': c.status
                     }
-                    connections.append(connection)
 
-            connections = list(map(lambda x: {**{'id': x}, **connections[x]}, list(range(0, len(connections)))))
+                    k = str(connection)
+                    if  k in self.connections.keys():
+                        self.connections[k]['status'] = c.status
+                        self.connections[k]['keptime'] = datetime.datetime.now().timestamp() - self.connections[k]['stime']
+                    else:
+                        self.connections[k] = connection
+                        self.connections[k]['id'] = len(self.connections)
+                        self.connections[k]['status'] = c.status
+                        self.connections[k]['stime'] = datetime.datetime.now().timestamp()
+                        self.connections[k]['keptime'] = 0
+
+            connections = list(map(lambda x: self.connections[x], self.connections.keys()))
             data = {
                 'command': 'replace',
                 'data': connections
@@ -61,6 +72,7 @@ class NetStatClient(object):
         self.loop.run_until_complete(self._write_info())
 
 if __name__ == "__main__":
-    url = "ws://localhost:8000/ws"
+    #url = "ws://localhost:3000/ws"
+    url = "ws://localhost:3000/ws"
     nsc = NetStatClient(url)
     nsc.run()

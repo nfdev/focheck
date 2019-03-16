@@ -2,15 +2,17 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
-import Grid from '@material-ui/core/Grid';
 import withRoot from '../withRoot';
 import LeftConsole from './LeftConsole';
 import NetStat from './NetStat';
+import Grid from '@material-ui/core/Grid';
+
 
 const styles = theme => ({
   root: {
-    textAlign: 'center',
-    paddingTop: theme.spacing.unit * 20,
+    flexGrow: 1,
+    overflowX: 'auto',
+    paddingTop: theme.spacing.unit * 2,
   },
 });
 
@@ -36,14 +38,20 @@ class Index extends React.Component {
 
     return (
       <div className={classes.root}>
-        <Typography variant='h4' align='center' gutterBottom>
-          {'Failover Checker'}
-        </Typography>
-        <Grid container spacing={24}>
-          <Grid item xs={4}>
+        <Grid container
+          spacing={8}
+          alignItems='center'
+          justify='space-around'
+        >
+          <Grid item xs={12}>
+            <Typography variant='h4' align='center' gutterBottom>
+              {'Failover Checker'}
+            </Typography>
+          </Grid>
+          <Grid item xs={12}>
             <LeftConsole />
           </Grid>
-          <Grid item xs>
+          <Grid item xs={12}>
             <NetStat />
           </Grid>
         </Grid>

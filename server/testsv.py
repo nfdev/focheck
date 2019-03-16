@@ -27,9 +27,6 @@ class TestPage(RequestHandler):
         status = SharedMemory.return_status
         self.clear()
         self.set_status(status)
-        self.set_header('Access-Control-Allow-Origin', '*')
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header('Access-Control-Allow-Methods', 'GET')
         self.finish("TestPage %d" % status)
 
     def post(self, *args, **kwargs):
@@ -158,4 +155,9 @@ if __name__ == '__main__':
     test_http_server = HTTPServer(tsv)
     test_http_server.listen(8000)
 
+
+    import netstat
+    nsc = netstat.NetStatClient("ws://localhost:3000/ws")
+
+    nsc.run()
     IOLoop.instance().start()
