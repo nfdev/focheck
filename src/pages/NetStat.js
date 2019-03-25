@@ -8,43 +8,8 @@ import NetStatChart from "./NetStatChart";
 import Grid from '@material-ui/core/Grid';
 
 
-const sample_conn = [
-  {
-    id: 1,
-    status: 'Establiched',
-    laddr: '10.1.1.1',
-    lport: '12345',
-    raddr: '10.1.1.2',
-    rport: '80',
-  },
-  {
-    id: 2,
-    status: 'Establiched',
-    laddr: '172.1.1.1',
-    lport: '23456',
-    raddr: '172.1.1.1',
-    rport: '8080',
-  },
-  {
-    id: 3,
-    status: 'Establiched',
-    laddr: '192.168.1.1',
-    lport: '34567',
-    raddr: '192.168.1.1',
-    rport: '443',
-  },
-];
-
-const sample_clog= [
-  { timestamp: '10:00:00', connections: 10},
-  { timestamp: '10:00:01', connections: 10},
-  { timestamp: '10:00:02', connections: 8},
-  { timestamp: '10:00:03', connections: 20},
-  { timestamp: '10:00:04', connections: 10},
-  { timestamp: '10:00:05', connections: 30},
-  { timestamp: '10:00:06', connections: 10},
-];
-
+const interval = 5000;
+const maxlength = 1000 * 60 * 3 / interval;
 
 const styles = theme => ({
   root: {
@@ -57,19 +22,74 @@ const styles = theme => ({
   },
 });
 
-function getTimestamp() {
-  let date = new Date();
-  let h = date.getHours();
-  let m = date.getMinutes();
-  let s = date.getSeconds();
 
-  h = (h < 10) ? '0' + h : h;
-  m = (m < 10) ? '0' + m : m;
-  s = (s < 10) ? '0' + s : s;
+class WShandler {
 
-  return(h + ':' + m + ':' + s);
+  constructor(clhandler){
+
+    // Initialize
+    this.msg = null;
+    this.lastmsg = null;
+    this.ws = new WebSocket('ws://' + window.location.host + '/ws');
+    this.ws.onmessage = this.msghandler.bind(this);
+
+    // Run client handler
+    this.ch = setInterval(
+      () => {
+        if (this.ws.readyState === WebSocket.OPEN) {
+          if (this.msg === this.lastmsg) {
+            //wait
+          } else {
+            clhandler(this.msg);
+          }
+        }else if (this.ws.readState === WebSocket.CLOSED) {
+          let dmsg = this.dummyMsg();
+          clhandler(dmsg);
+        } else {
+          let dmsg = this.dummyMsg();
+          clhandler(dmsg);
+        }
+      },
+      interval);
+  }
+
+  msghandler(msg){
+    this.lastmsg = this.msg;
+    this.msg = msg;
+  }
+
+  dummyMsg(){
+    const status = [
+      "ESTABLISHED",
+      "LISTEN",
+      "CLOSE_WAIT",
+    ];
+    let conn = [];
+    let n = Math.random()*100;
+    for (let i = 0; i < n; i++) {
+      conn.push(
+        {
+          id: i,
+          status: status[parseInt(Math.random()*3)],
+          laddr: '10.1.1.1',
+          lport: '12345',
+          raddr: '10.1.1.2',
+          rport: '80',
+        });
+    }
+
+    let data = {
+      command: 'update',
+      data: conn,
+      timestamp: (new Date()).getTime() / 1000.0,
+    };
+    let msg = {
+      data: JSON.stringify(data),
+    };
+
+    return msg;
+  }
 }
-
 
 class NetStat extends React.Component {
 
@@ -77,23 +97,43 @@ class NetStat extends React.Component {
     super(props);
     this.state = {
       connections: [],
-      //      history: [],
-      history: sample_clog,
+      history: [],
       ws: null,
     };
     this.chartRef = React.createRef();
   }
 
+  handleMessage(msg) {
+    let data = JSON.parse(msg.data);
+    if (data.command === 'update') {
+      data.timestamp = data.timestamp * 1000;
 
-  updateHistory(data){
+      this.setState({
+        connections: data.data,
+      });
+
+      this.updateHistory(data.timestamp, data.data);
+    }
+  }
+
+  updateHistory(timestamp, data){
     let history = this.state.history;
-    const maxlength = 60 * 30;
-    if (history.length >= maxlength) {
-      history = history.splice(history.length - maxlength - 1);
+    while (history.length >= maxlength) {
+      history.shift();
     };
+
+    let stats = {};
+    data.forEach(function (d) {
+      if (stats[d.status]) {
+        stats[d.status] += 1;
+      }else{
+        stats[d.status] = 1;
+      }
+    })
+
     history.push({
-      timestamp: data.timestamp,
-      conn_stats: data.length
+      timestamp: timestamp,
+      stats: stats,
     });
     this.setState({
       history: history
@@ -101,35 +141,12 @@ class NetStat extends React.Component {
   }
 
   componentDidMount() {
-    let ws = new WebSocket('ws://' + window.location.host + '/ws');
-    ws.onmessage = this.handleMessage.bind(this);
-    ws.onerror = function(e){
-      console.log("WS Connections Failure, Dummy WS starts.");
-      ws = setInterval(
-        function(){
-          let msg = {
-            data: parseInt(Math.random() * 100),
-            timestamp: getTimestamp(),
-          };
-          this.handleMessage(msg);
-        }, 5);
-    }
+    let ws = new WShandler(this.handleMessage.bind(this));
     this.setState({ws: ws});
   }
 
   componentDidUpdate() {
   }
-
-  handleMessage(msg) {
-    let data = JSON.parse(msg.data);
-    if (data.command === 'update') {
-      this.setState({
-        connections: data.data,
-      });
-      this.updateHistory(data.data);
-    }
-  }
-
 
   render() {
     const { classes } = this.props;

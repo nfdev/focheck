@@ -59,7 +59,8 @@ class NetStatClient(object):
             connections = list(map(lambda x: self.connections[x], self.connections.keys()))
             data = {
                 'command': 'replace',
-                'data': connections
+                'data': connections,
+                'timestamp': datetime.datetime.now().timestamp(),
             }
 
             try:
